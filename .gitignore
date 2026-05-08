@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.env
+*.pth
+models/*.pth
+models/*.pt
+uploads/*
+!uploads/.gitkeep
