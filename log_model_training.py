@@ -1,9 +1,16 @@
 import mlflow
 import mlflow.pytorch
 import torch
+import matplotlib
+matplotlib.use('Agg')  # Fix for Jenkins - no display needed
 import matplotlib.pyplot as plt
 import numpy as np
 from datetime import datetime
+import sys
+import io
+
+# Fix Unicode for Windows Jenkins
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
 # Set tracking URI
 mlflow.set_tracking_uri("http://127.0.0.1:5000")
@@ -12,7 +19,9 @@ mlflow.set_experiment("solar-panel-defect-detection")
 def log_training_results():
     """Log your training results from the notebook to MLflow"""
     
-    with mlflow.start_run(run_name=f"efficientnet-b0-training-{datetime.now().strftime('%Y%m%d_%H%M%S')}"):
+    run_name = f"efficientnet-b0-training-{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    
+    with mlflow.start_run(run_name=run_name):
         
         # Log model parameters
         mlflow.log_params({
@@ -31,7 +40,6 @@ def log_training_results():
         })
         
         # Log training metrics from your notebook output
-        # Epoch-wise metrics
         epochs_data = [
             {"epoch": 1, "train_loss": 0.7958, "val_loss": 0.4844, "train_acc": 73.02, "val_acc": 84.21},
             {"epoch": 2, "train_loss": 0.3718, "val_loss": 0.4269, "train_acc": 87.47, "val_acc": 85.96},
@@ -65,24 +73,12 @@ def log_training_results():
         
         # Log class-wise performance
         class_metrics = {
-            "bird_drop_precision": 1.0,
-            "bird_drop_recall": 1.0,
-            "bird_drop_f1": 1.0,
-            "clean_precision": 0.6667,
-            "clean_recall": 1.0,
-            "clean_f1": 0.80,
-            "dusty_precision": 1.0,
-            "dusty_recall": 0.7778,
-            "dusty_f1": 0.875,
-            "electrical_damage_precision": 1.0,
-            "electrical_damage_recall": 1.0,
-            "electrical_damage_f1": 1.0,
-            "physical_damage_precision": 1.0,
-            "physical_damage_recall": 1.0,
-            "physical_damage_f1": 1.0,
-            "snow_precision": 1.0,
-            "snow_recall": 1.0,
-            "snow_f1": 1.0,
+            "bird_drop_precision": 1.0, "bird_drop_recall": 1.0, "bird_drop_f1": 1.0,
+            "clean_precision": 0.6667, "clean_recall": 1.0, "clean_f1": 0.80,
+            "dusty_precision": 1.0, "dusty_recall": 0.7778, "dusty_f1": 0.875,
+            "electrical_damage_precision": 1.0, "electrical_damage_recall": 1.0, "electrical_damage_f1": 1.0,
+            "physical_damage_precision": 1.0, "physical_damage_recall": 1.0, "physical_damage_f1": 1.0,
+            "snow_precision": 1.0, "snow_recall": 1.0, "snow_f1": 1.0,
         }
         mlflow.log_metrics(class_metrics)
         
@@ -93,7 +89,6 @@ def log_training_results():
         val_losses = [e["val_loss"] for e in epochs_data]
         train_accs = [e["train_acc"] for e in epochs_data]
         val_accs = [e["val_acc"] for e in epochs_data]
-        
         epochs = range(1, 11)
         
         ax1.plot(epochs, train_losses, 'b-', label='Train Loss')
@@ -128,5 +123,4 @@ def log_training_results():
 
 if __name__ == "__main__":
     log_training_results()
-    print("\nTraining results logged to MLflow!")
-    print("Open http://127.0.0.1:5000 to view the experiment")
+    print("Training results logged to MLflow!")

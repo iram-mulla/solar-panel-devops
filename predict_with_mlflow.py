@@ -5,6 +5,11 @@ from PIL import Image
 import argparse
 from datetime import datetime
 import os
+import sys
+import io
+
+# Fix Unicode for Windows Jenkins
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
 mlflow.set_tracking_uri("http://127.0.0.1:5000")
 
