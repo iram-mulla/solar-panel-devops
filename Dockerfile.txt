@@ -1,0 +1,22 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY web_app.py .
+COPY templates/ ./templates/
+COPY models/ ./models/
+
+# Expose ports
+EXPOSE 8000
+
+CMD ["python", "web_app.py"]
