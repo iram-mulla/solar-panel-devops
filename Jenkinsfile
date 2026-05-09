@@ -70,7 +70,7 @@ pipeline {
                     python predict_with_mlflow.py "test_images\\dust.png"
                     
                     echo [4/6] Testing electrical damage...
-                    python predict_with_mlflow.py "test_images\\electrical_damage.png"
+                    python predict_with_mlflow.py "test_images\Electrical_Damage.jpg"
                     
                     echo [5/6] Testing physical damage...
                     python predict_with_mlflow.py "test_images\\physical_damage.png"
