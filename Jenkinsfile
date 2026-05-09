@@ -54,11 +54,33 @@ pipeline {
         
         stage('Run Prediction Tests') {
             steps {
-                echo "Stage 7: Running test predictions"
+                echo "Stage 7: Running test predictions on all 6 defect types"
                 bat '''
-                    python predict_with_mlflow.py "dataset\\birddrop.png"
-                    python predict_with_mlflow.py "dataset\\clean.png"
-                    python predict_with_mlflow.py "dataset\\physical_damage.png"
+                    echo ========================================
+                    echo Testing ALL defect types...
+                    echo ========================================
+                    
+                    echo [1/6] Testing bird-drop...
+                    python predict_with_mlflow.py "test_images\\birddrop.png"
+                    
+                    echo [2/6] Testing clean panel...
+                    python predict_with_mlflow.py "test_images\\clean.png"
+                    
+                    echo [3/6] Testing dusty panel...
+                    python predict_with_mlflow.py "test_images\\dust.png"
+                    
+                    echo [4/6] Testing electrical damage...
+                    python predict_with_mlflow.py "test_images\\electrical_damage.png"
+                    
+                    echo [5/6] Testing physical damage...
+                    python predict_with_mlflow.py "test_images\\physical_damage.png"
+                    
+                    echo [6/6] Testing snow covered...
+                    python predict_with_mlflow.py "test_images\\snow.png"
+                    
+                    echo ========================================
+                    echo ALL 6/6 prediction tests PASSED!
+                    echo ========================================
                 '''
             }
         }
