@@ -10,7 +10,7 @@ from datetime import datetime
 app = Flask(__name__)
 
 # MLflow setup
-mlflow.set_tracking_uri("http://127.0.0.1:5000")
+mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:5000"))
 
 CLASS_NAMES = ['bird-drop', 'clean', 'dusty', 'electrical-damage', 'physical-damage', 'snow']
 
@@ -60,23 +60,32 @@ CLEANING_RECOMMENDATIONS = {
 }
 
 # Load model at startup
-MODEL_PATH = r"D:\Engineering\6th sem\DevOps\solar-panel-devops\models\solar_panel_android.pt"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.getenv("MODEL_PATH", os.path.join(BASE_DIR, 'models', 'solar_panel_android.pt'))
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+# Use one reusable transform object to reduce repeated setup time for each image.
+IMAGE_TRANSFORM = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+])
+
+# Use a conservative thread count for CPU inference in local development.
+torch.set_num_threads(max(1, min(4, os.cpu_count() or 1)))
 
 try:
-    model = torch.jit.load(MODEL_PATH, map_location='cpu')
+    model = torch.jit.load(MODEL_PATH, map_location=DEVICE)
+    model.to(DEVICE)
     model.eval()
     print("✅ Model loaded successfully!")
 except Exception as e:
     print(f"❌ Error loading model: {e}")
     model = None
 
+
 def preprocess_image(image):
-    transform = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
-    return transform(image).unsqueeze(0)
+    return IMAGE_TRANSFORM(image).unsqueeze(0)
 
 @app.route('/')
 def home():
@@ -93,9 +102,9 @@ def predict():
         image = Image.open(io.BytesIO(img_bytes)).convert('RGB')
         
         # Preprocess and predict
-        input_tensor = preprocess_image(image)
-        
-        with torch.no_grad():
+        input_tensor = preprocess_image(image).to(DEVICE)
+
+        with torch.inference_mode():
             output = model(input_tensor)
             probabilities = torch.softmax(output, dim=1)
             confidence, predicted = torch.max(probabilities, 1)

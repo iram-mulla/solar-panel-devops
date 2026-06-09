@@ -1,0 +1,9 @@
+artifact_location: file:///D:/Engineering/6th%20sem/DevOps/solar-panel-devops/mlflow_data/mlruns/0
+creation_time: 1781010282070
+effective_trace_archival_retention: null
+experiment_id: '0'
+last_update_time: 1781010282070
+lifecycle_stage: active
+name: Default
+trace_location: null
+workspace: default

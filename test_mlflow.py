@@ -1,5 +1,6 @@
-import mlflow 
-mlflow.set_tracking_uri('file:///D:/mlflow/mlruns') 
+import mlflow
+
+mlflow.set_tracking_uri('sqlite:///D:/mlflow/mlflow.db')
 mlflow.set_experiment('test-experiment') 
 with mlflow.start_run(): 
     mlflow.log_param("test", "hello") 

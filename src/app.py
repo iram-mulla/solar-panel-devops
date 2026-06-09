@@ -16,9 +16,13 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # MLflow setup
-MLFLOW_TRACKING_URI = "file:///D:/mlflow/mlruns"
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:5000")
 mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-mlflow.set_experiment("solar-panel-defect-detection")
+
+try:
+    mlflow.set_experiment("solar-panel-defect-detection")
+except Exception as exc:
+    logger.warning("MLflow experiment setup skipped: %s", exc)
 
 # Class names and recommendations (same as before)
 CLASS_NAMES = ['bird-drop', 'clean', 'dusty', 'electrical-damage', 'physical-damage', 'snow']
@@ -129,17 +133,17 @@ def register_model_with_mlflow(model_path):
         return run.info.run_id
 
 def load_model_from_registry(model_name="SolarPanelDefectDetector", stage="Production"):
-    """Load model from MLflow Model Registry"""
+    """Load model from MLflow Model Registry when the tracking server is available."""
     global model, model_version
-    
+
     try:
         model_uri = f"models:/{model_name}/{stage}"
         model = mlflow.pyfunc.load_model(model_uri)
         model_version = mlflow.register_model(model_uri, model_name)
         logger.info(f"Model loaded from registry: {model_name} ({stage})")
         return True
-    except Exception as e:
-        logger.error(f"Error loading model from registry: {e}")
+    except Exception as exc:
+        logger.warning("MLflow registry model is not available yet: %s", exc)
         return False
 
 def preprocess_image(image: Image.Image) -> torch.Tensor:
@@ -154,18 +158,18 @@ def preprocess_image(image: Image.Image) -> torch.Tensor:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifecycle manager for FastAPI"""
-    # Startup: Load model
-    model_path = os.getenv('MODEL_PATH', 'models/solar_panel_android.pt')
-    
-    # Try loading from MLflow registry first
-    mlflow_loaded = load_model_from_registry()
-    
-    if not mlflow_loaded and os.path.exists(model_path):
-        # Register model if not in registry
-        run_id = register_model_with_mlflow(model_path)
-        logger.info(f"Registered new model version with run_id: {run_id}")
-        load_model_from_registry()
-    
+    model_path = os.getenv('MODEL_PATH', os.path.join(os.path.dirname(__file__), '..', 'models', 'solar_panel_android.pt'))
+
+    try:
+        mlflow_loaded = load_model_from_registry()
+
+        if not mlflow_loaded and os.path.exists(model_path):
+            run_id = register_model_with_mlflow(model_path)
+            logger.info(f"Registered new model version with run_id: {run_id}")
+            load_model_from_registry()
+    except Exception as exc:
+        logger.warning("MLflow startup check skipped: %s", exc)
+
     yield  # Application runs here
     
     # Shutdown: Cleanup
