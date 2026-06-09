@@ -1,9 +1,0 @@
-artifact_location: file:///D:/Engineering/6th%20sem/DevOps/solar-panel-devops/mlflow_data/mlruns/743833563974935544
-creation_time: 1781010291983
-effective_trace_archival_retention: null
-experiment_id: '743833563974935544'
-last_update_time: 1781010291983
-lifecycle_stage: active
-name: solar-panel-defect-detection
-trace_location: null
-workspace: default
