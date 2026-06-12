@@ -3,6 +3,10 @@ pipeline {
     
     environment {
         MLFLOW_URI = "http://127.0.0.1:5000"
+        PIP_CACHE_DIR = "D:\\pip-cache"
+        TEMP = "D:\\temp"
+        TMP = "D:\\temp"
+        PYTHONUSERBASE = "D:\\python-user"
     }
     
     stages {
@@ -15,8 +19,13 @@ pipeline {
         
         stage('Setup Python') {
             steps {
-                echo "Stage 2: Setting up Python environment"
-                bat 'pip install torch torchvision numpy pillow flask mlflow matplotlib seaborn scikit-learn boto3'
+                echo "Stage 2: Setting up Python environment (packages cached on D: drive)"
+                bat '''
+                    if not exist D:\\pip-cache mkdir D:\\pip-cache
+                    if not exist D:\\temp mkdir D:\\temp
+                    pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+                    pip install numpy pillow flask mlflow matplotlib seaborn scikit-learn boto3
+                '''
             }
         }
         

@@ -93,6 +93,10 @@
                             <img id="previewImage" class="image-preview mt-3" style="display: none;">
                         </div>
                         
+                        <div id="modelStatus" class="alert alert-info text-center mt-3" style="display: none;">
+                            Loading AI model in background… first analysis may take a moment.
+                        </div>
+
                         <div class="text-center mt-3">
                             <button class="btn btn-primary btn-lg" id="predictBtn" onclick="predictDefect()" disabled>
                                 🔍 Analyze Image
@@ -150,15 +154,72 @@
             }
         }
 
+        async function waitForModel() {
+            const statusEl = document.getElementById('modelStatus');
+            for (let i = 0; i < 120; i++) {
+                const res = await fetch('/health');
+                const data = await res.json();
+                if (data.model_loaded) {
+                    statusEl.style.display = 'none';
+                    return true;
+                }
+                if (data.model_error) {
+                    statusEl.className = 'alert alert-danger text-center mt-3';
+                    statusEl.textContent = 'Model failed to load: ' + data.model_error;
+                    statusEl.style.display = 'block';
+                    return false;
+                }
+                statusEl.style.display = 'block';
+                await new Promise(r => setTimeout(r, 1000));
+            }
+            return false;
+        }
+
+        async function compressImage(file, maxEdge = 768, quality = 0.82) {
+            // Resize large phone/camera photos before upload — major speed win on localhost
+            if (file.size < 200 * 1024) return file;
+
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                const url = URL.createObjectURL(file);
+                img.onload = () => {
+                    let { width, height } = img;
+                    const scale = Math.min(1, maxEdge / Math.max(width, height));
+                    width = Math.round(width * scale);
+                    height = Math.round(height * scale);
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                    URL.revokeObjectURL(url);
+
+                    canvas.toBlob(
+                        blob => resolve(new File([blob], file.name, { type: 'image/jpeg' })),
+                        'image/jpeg',
+                        quality
+                    );
+                };
+                img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image load failed')); };
+                img.src = url;
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => waitForModel());
+
         async function predictDefect() {
             if (!selectedFile) return;
+
+            const modelReady = await waitForModel();
+            if (!modelReady) return;
             
-            // Show loader
             document.getElementById('loader').style.display = 'block';
             document.getElementById('results').style.display = 'none';
-            
+            document.getElementById('predictBtn').disabled = true;
+
+            const uploadFile = await compressImage(selectedFile);
             const formData = new FormData();
-            formData.append('file', selectedFile);
+            formData.append('file', uploadFile);
             
             try {
                 const response = await fetch('/predict', {
@@ -173,12 +234,16 @@
                 
                 if (data.success) {
                     displayResults(data);
+                } else if (response.status === 503) {
+                    alert('Model still loading — wait a few seconds and try again.');
                 } else {
                     alert('Error: ' + data.error);
                 }
             } catch (error) {
                 document.getElementById('loader').style.display = 'none';
                 alert('Error connecting to server: ' + error.message);
+            } finally {
+                document.getElementById('predictBtn').disabled = false;
             }
         }
 
@@ -191,6 +256,8 @@
                 <span class="badge ${badgeClass} fs-4">${data.predicted_class.toUpperCase()}</span>
                 <br>
                 <small class="text-muted">Confidence: ${data.confidence}%</small>
+                <br>
+                <small class="text-muted">Model: ${data.inference_ms}ms | Total: ${data.total_ms}ms</small>
             `;
             
             // Prediction details

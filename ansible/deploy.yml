@@ -1,0 +1,82 @@
+---
+# Ansible playbook — deploy solar panel app to AWS EC2
+# Prerequisites: Docker installed on EC2, ECR image pushed, SSH access configured
+# Usage: ansible-playbook -i inventory.ini deploy.yml
+
+- name: Deploy Solar Panel Defect Detection to EC2
+  hosts: solar_panel_servers
+  gather_facts: true
+
+  vars:
+    container_name: solar-panel-api
+    mlflow_container: mlflow-server
+
+  tasks:
+    - name: Install Docker and dependencies (Ubuntu)
+      apt:
+        name:
+          - docker.io
+          - docker-compose-plugin
+          - python3-pip
+        state: present
+        update_cache: true
+      when: ansible_os_family == "Debian"
+
+    - name: Ensure Docker service is running
+      service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Create application directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Copy docker-compose and config files
+      copy:
+        src: "{{ item }}"
+        dest: "{{ app_dir }}/{{ item | basename }}"
+      loop:
+        - ../docker-compose.yml
+        - ../nginx.conf
+      delegate_to: localhost
+      become: false
+
+    - name: Log in to AWS ECR
+      shell: |
+        aws ecr get-login-password --region {{ lookup('env', 'AWS_REGION') | default('us-east-1') }} \
+          | docker login --username AWS --password-stdin {{ ecr_image | regex_replace('/.*', '') }}
+      args:
+        chdir: "{{ app_dir }}"
+      changed_when: false
+      when: ecr_image is defined and 'YOUR_AWS_ACCOUNT' not in ecr_image
+
+    - name: Pull latest container image from ECR
+      command: docker pull {{ ecr_image }}
+      when: ecr_image is defined and 'YOUR_AWS_ACCOUNT' not in ecr_image
+
+    - name: Stop existing containers
+      command: docker compose down
+      args:
+        chdir: "{{ app_dir }}"
+      ignore_errors: true
+
+    - name: Start application stack
+      command: docker compose up -d
+      args:
+        chdir: "{{ app_dir }}"
+
+    - name: Wait for health check
+      uri:
+        url: "http://127.0.0.1:{{ app_port }}/health"
+        status_code: 200
+      register: health
+      retries: 10
+      delay: 5
+      until: health.status == 200
+
+    - name: Display deployment status
+      debug:
+        msg: "App deployed at http://{{ ansible_host }}:{{ app_port }}"

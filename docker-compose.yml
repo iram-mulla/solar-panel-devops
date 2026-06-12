@@ -8,15 +8,20 @@ services:
     volumes:
       - ./models:/app/models
     environment:
-      - FLASK_ENV=development
+      - FLASK_ENV=production
+      - FLASK_DEBUG=false
+      - MLFLOW_TRACKING_URI=http://mlflow-server:5000
+      - MLFLOW_LOG_PREDICTIONS=true
+    depends_on:
+      - mlflow-server
     restart: unless-stopped
 
   mlflow-server:
-    image: python:3.9-slim
-    command: |
-      sh -c "pip install mlflow && mlflow server --backend-store-uri sqlite:///app/mlflow.db --default-artifact-root file:///app/mlflow-artifacts --host 0.0.0.0 --port 5000"
+    build:
+      context: .
+      dockerfile: Dockerfile.mlflow
     ports:
       - "5000:5000"
     volumes:
-      - ./mlflow_data:/app
+      - ./mlflow_data:/app/mlflow_data
     restart: unless-stopped
