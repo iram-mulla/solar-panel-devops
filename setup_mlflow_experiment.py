@@ -2,7 +2,11 @@ import mlflow
 import os
 
 # Set MLflow tracking URI
-mlflow.set_tracking_uri("http://127.0.0.1:5000")
+import os
+
+mlflow.set_tracking_uri(
+    os.getenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:5000")
+)
 
 # Create experiment for solar panel project
 experiment_name = "solar-panel-defect-detection"

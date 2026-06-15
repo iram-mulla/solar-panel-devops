@@ -10,7 +10,11 @@ import io
 # Fix Unicode for Windows Jenkins
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
-mlflow.set_tracking_uri("http://127.0.0.1:5000")
+import os
+
+mlflow.set_tracking_uri(
+    os.getenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:5000")
+)
 mlflow.set_experiment("solar-panel-defect-detection")
 
 class EnhancedEfficientNet(nn.Module):

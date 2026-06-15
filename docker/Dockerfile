@@ -1,26 +1,18 @@
-FROM python:3.9-slim
+FROM pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    curl \
-    git \
-    && rm -rf /var/lib/apt/lists/*
+# Install additional packages
+RUN pip install --no-cache-dir flask mlflow scikit-learn matplotlib seaborn
 
-# Copy requirements
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Create MLflow directory with write permissions
+RUN mkdir -p /mlflow_data && chmod 777 /mlflow_data
 
 # Copy application code
-COPY src/ ./src/
+COPY web_app.py .
+COPY templates/ ./templates/
 COPY models/ ./models/
-COPY mlflow_experiments/ ./mlflow_experiments/
 
-# Create MLflow directories
-RUN mkdir -p /tmp/mlflow/mlruns /tmp/mlflow/artifacts
+EXPOSE 8000
 
-EXPOSE 8000 5000
-
-# Start both MLflow server and API
-CMD ["sh", "-c", "mlflow server --backend-store-uri file:///tmp/mlflow/mlruns --default-artifact-root file:///tmp/mlflow/artifacts --host 0.0.0.0 --port 5000 & python src/app.py"]
+CMD ["python", "web_app.py"]

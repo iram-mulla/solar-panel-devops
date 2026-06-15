@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  solar-panel-api:
+  web-app:
     build: .
     ports:
       - "8000:8000"
@@ -10,8 +10,6 @@ services:
     environment:
       - FLASK_ENV=production
       - FLASK_DEBUG=false
-      - MLFLOW_TRACKING_URI=http://mlflow-server:5000
-      - MLFLOW_LOG_PREDICTIONS=true
     depends_on:
       - mlflow-server
     restart: unless-stopped
